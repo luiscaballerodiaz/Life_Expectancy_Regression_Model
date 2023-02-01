@@ -1,8 +1,9 @@
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-import math
+import pandas as pd
 import numpy as np
+import math
 
 
 class DataPlot:
@@ -49,7 +50,7 @@ class DataPlot:
             fig.delaxes(axes[math.ceil(dataset.shape[1] / ncolumns) - 1, axis])
         ax = axes.ravel()
         for i in range(dataset.shape[1]):
-            ax[i].scatter(dataset[target], dataset.iloc[:, i],s=10, marker='o', c='blue')
+            ax[i].scatter(dataset[target], dataset.iloc[:, i], s=10, marker='o', c='blue')
             ax[i].grid(visible=True)
             ax[i].tick_params(axis='both', labelsize=8)
             ax[i].set_ylabel(dataset.keys()[i], fontsize=10)
@@ -63,15 +64,20 @@ class DataPlot:
     def correlation_plot(self, dataset, target):
         """Plot the correlation matrix among features"""
         dataset = dataset.astype(float)
+        corr_matrix = np.array(dataset.corr())
         # ALL FEATURES
         fig, ax = plt.subplots(figsize=(self.fig_width, self.fig_height))
-        plt.pcolormesh(dataset.corr(), cmap=plt.cm.cool)
+        plt.pcolormesh(corr_matrix, cmap=plt.cm.cool)
         plt.colorbar()
-        yrange = [x + 0.5 for x in range(dataset.corr().shape[0])]
-        xrange = [x + 0.5 for x in range(dataset.corr().shape[1])]
+        yrange = [x + 0.5 for x in range(corr_matrix.shape[0])]
+        xrange = [x + 0.5 for x in range(corr_matrix.shape[1])]
         plt.xticks(xrange, dataset.keys(), rotation=75, ha='center')
         ax.xaxis.tick_top()
         plt.yticks(yrange, dataset.keys(), va='center')
+        for i in range(len(xrange)):
+            for j in range(len(yrange)):
+                ax.text(xrange[i], yrange[j], str(round(corr_matrix[j, i], 1)),
+                        ha="center", va="center", color="k", fontweight='bold', fontsize=12)
         plt.xlabel("Features", weight='bold', fontsize=14)
         plt.ylabel("Features", weight='bold', fontsize=14)
         plt.title("Correlation matrix among all features", weight='bold', fontsize=24)
@@ -80,19 +86,20 @@ class DataPlot:
         plt.clf()
         # ONLY LIFE EXPECTANCY
         fig, ax = plt.subplots(figsize=(self.fig_width, self.fig_height))
-        dataset = dataset.astype(float)
         index = 0
         for i in range(len(dataset.keys())):
             if target.lower() == dataset.keys()[i].lower():
                 index = i
                 break
-        corr_matrix = np.array(dataset.corr())
         plt.pcolormesh([corr_matrix[index, :]], cmap=plt.cm.cool)
         plt.colorbar()
         xrange = [x + 0.5 for x in range(dataset.corr().shape[1])]
         plt.xticks(xrange, dataset.keys(), rotation=75, ha='center')
         ax.xaxis.tick_top()
         plt.yticks([0.5], [target], va='center')
+        for i in range(len(xrange)):
+            ax.text(xrange[i], 0.5, str(round(corr_matrix[index, i], 1)),
+                    ha="center", va="center", color="k", fontweight='bold', fontsize=12)
         plt.xlabel("Features", weight='bold', fontsize=14)
         plt.ylabel(target, weight='bold', fontsize=14)
         plt.title("Correlation matrix regarding target feature", weight='bold', fontsize=24)
@@ -103,6 +110,7 @@ class DataPlot:
     def compare_regression_plot(self, ncolumns, algorithm, x, y):
         """Plot regression model vs real input for different algorithms"""
         nplots = len(algorithm)
+        # Regression comparison y_test vs y_pred
         fig, axes = plt.subplots(math.ceil(nplots / ncolumns), ncolumns,
                                  figsize=(self.fig_width, self.fig_height))
         spare_axes = ncolumns - nplots % ncolumns
@@ -116,7 +124,9 @@ class DataPlot:
         ax = axes.ravel()
         cmap = cm.get_cmap('tab10')
         colors = cmap.colors
+        max_dev = 0
         for i in range(nplots):
+            max_dev = max(max_dev, max(abs(y[i] - x)))
             ax[i].scatter(x, x, s=10, marker='o', c='black', label='Input data')
             ax[i].scatter(x, y[i], color=colors[i % len(colors)], s=10, marker='^', label=algorithm[i])
             ax[i].set_title(algorithm[i].upper() + ' model output vs input data', fontsize=18, fontweight='bold')
@@ -128,6 +138,28 @@ class DataPlot:
         plt.subplots_adjust(top=0.85)
         fig.tight_layout()
         plt.savefig('Regression comparison.png', bbox_inches='tight')
+        plt.clf()
+        # Assess the worst deviation cases
+        fig, ax = plt.subplots(figsize=(self.fig_width, self.fig_height))
+        nworst = 5
+        matrix = np.zeros([nworst, nplots + 1])
+        for i in range(nworst):
+            matrix[i, 0] = i + 1
+            for j in range(nplots):
+                dev = abs(y[j] - x)
+                index = np.argsort(dev)[-(i + 1)]
+                matrix[i, j + 1] = dev[index]
+        label = []
+        for i in range(nplots):
+            label.append(algorithm[i].upper() + ' (mean: ' + str(np.round(np.mean(abs(y[i] - x)), 2)) + ')')
+        df = pd.DataFrame(matrix, columns=['X'] + label)
+        df.plot(x='X', y=label, kind="bar", rot=0, ax=ax)
+        plt.title('Worst test cases deviation assessment', fontsize=24)
+        plt.xlabel('Worst test cases', fontweight='bold', fontsize=14)
+        plt.ylabel('Max deviation', fontweight='bold', fontsize=14)
+        plt.legend()
+        plt.grid()
+        plt.savefig('Regression max deviation.png', bbox_inches='tight')
         plt.clf()
 
     def plot_params_sweep(self, algorithm, test_values, fixed_params,
@@ -164,7 +196,7 @@ class DataPlot:
                 else:
                     fig.delaxes(axes[math.ceil(len(ztick) / self.subplot_row) - 1, axis])
             ax = axes.ravel()
-            for p in range(len(ax)):
+            for p in range(len(ztick)):
                 pcm = ax[p].pcolormesh(test_values[:, :, p], cmap=plt.cm.PuBuGn)
                 divider = make_axes_locatable(ax[p])
                 cax = divider.append_axes('right', size='5%', pad=0.05)
@@ -187,4 +219,20 @@ class DataPlot:
             plt.subplots_adjust(top=0.85)
         fig.tight_layout()
         plt.savefig('Parameter sweep ' + algorithm.upper() + ' algorithm.png', bbox_inches='tight')
+        plt.clf()
+
+    def plot_regression(self, name, x_real, y_real, x_model, y_model, algorithm):
+        """Plot regression model vs real target value"""
+        fig, ax = plt.subplots(figsize=(self.fig_width, self.fig_height))
+        cmap = cm.get_cmap('tab10')
+        colors = cmap.colors
+        ax.scatter(x_real, y_real, s=10, marker='o', c='black', label='Input data')
+        for i in range(len(y_model)):
+            ax.plot(x_model, y_model[i], linewidth=2, color=colors[i % len(colors)], label=algorithm[i])
+        plt.title('Regression ' + name.upper() + ' model performance vs real output data', fontsize=24)
+        plt.xlabel('Input data', fontweight='bold', fontsize=14)
+        plt.ylabel('Output data', fontweight='bold', fontsize=14)
+        plt.legend()
+        plt.grid()
+        plt.savefig('Regression ' + name.upper() + ' analysis.png', bbox_inches='tight')
         plt.clf()

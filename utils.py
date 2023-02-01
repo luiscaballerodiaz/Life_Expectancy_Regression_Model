@@ -1,8 +1,7 @@
 import time
 import math
 import numpy as np
-from sklearn.preprocessing import StandardScaler
-from sklearn.preprocessing import MinMaxScaler
+import pandas as pd
 from sklearn.impute import SimpleImputer
 from sklearn.compose import ColumnTransformer
 from sklearn.model_selection import train_test_split
@@ -247,6 +246,9 @@ def param_sweep_matrix(dataplot, params, test_score):
                 feat_sweep[index_max] = feat_sweep_bu[i]
                 feat_name_sweep[index_max] = feat_name_sweep_bu[i]
                 feat_index[index_max] = feat_index_bu[i]
+                feat_sweep_bu = feat_sweep.copy()
+                feat_name_sweep_bu = feat_name_sweep.copy()
+                feat_index_bu = feat_index.copy()
             depth = 1
             for i in range(2, len(feat_sweep)):
                 depth *= len(feat_sweep[i])
@@ -291,4 +293,232 @@ def param_sweep_matrix(dataplot, params, test_score):
                                        xtick=feat_sweep[1], xtag=feat_name_sweep[1],
                                        ytick=feat_sweep[0], ytag=feat_name_sweep[0],
                                        ztick=zfeat, ztag=ztag)
+
+
+def data_na_removal(sourcedf, column_target, feat_cat):
+    """Remove na values from the column_target column"""
+    sourcedf_na = sourcedf.isna()
+    print('Original null values: \n{}\n'.format(sourcedf_na.sum()))
+    for i in range(sourcedf.shape[0]):
+        if sourcedf_na.iloc[i, sourcedf.columns.get_loc(column_target)]:
+            sourcedf.drop(index=i, inplace=True)
+    imputer_num = SimpleImputer(missing_values=np.nan, strategy='mean')
+    imputer_cat = SimpleImputer(missing_values=np.nan, strategy='most_frequent')
+    feat_num = [x for x in sourcedf.columns.values.tolist() if x not in feat_cat]
+    preprocessor = ColumnTransformer(transformers=[('imputer_cat', imputer_cat, feat_cat),
+                                                   ('imputer_num', imputer_num, feat_num)])
+    sourcedf = preprocessor.fit_transform(sourcedf)
+    sourcedf = pd.DataFrame(sourcedf, columns=feat_cat + feat_num)
+    print('Postprocessed null values: \n{}\n'.format(sourcedf.isna().sum()))
+    return sourcedf
+
+
+def data_outliers_removal(df, *outliers):
+    """Remove sample containing outliers"""
+    for i in range(len(outliers)):
+        if outliers[i][1] == '>':
+            df = df.loc[df[outliers[i][0]] < outliers[i][2], :]
+        elif outliers[i][1] == '>=':
+            df = df.loc[df[outliers[i][0]] <= outliers[i][2], :]
+        elif outliers[i][1] == '=':
+            df = df.loc[df[outliers[i][0]] == outliers[i][2], :]
+        elif outliers[i][1] == '<':
+            df = df.loc[df[outliers[i][0]] > outliers[i][2], :]
+        elif outliers[i][1] == '<=':
+            df = df.loc[df[outliers[i][0]] >= outliers[i][2], :]
+    return df
+
+
+def data_one_hot_encoding(df, column_target, feat_cat):
+    """Apply one hot encoding the categorical features and output feature dataset and target column separately"""
+    target = df[column_target]
+    df.drop(column_target, axis=1, inplace=True)
+    for i in range(len(feat_cat)):
+        df[feat_cat[i]] = df[feat_cat[i]].astype(str)
+    df = pd.get_dummies(df, columns=feat_cat)
+    list_features = df.keys()
+    return df, target, list_features
+
+
+def data_split_scale(df, target, test_size=0.2):
+    x_train, x_test, y_train, y_test = train_test_split(df, target, test_size=test_size, shuffle=True, random_state=0)
+    print('\n')
+    print('X_train shape: {}'.format(x_train.shape))
+    print('y_train shape: {}'.format(y_train.shape))
+    print('X_test shape: {}'.format(x_test.shape))
+    print('y_test shape: {}'.format(y_test.shape))
+    print('\n')
+
+    x_train = x_train.to_numpy()
+    x_test = x_test.to_numpy()
+    y_train = y_train.to_numpy()
+    y_test = y_test.to_numpy()
+
+    scaler = StandardScaler()
+    scaler.fit(x_train)
+    x_train_std = scaler.transform(x_train)
+    x_test_std = scaler.transform(x_test)
+
+    scaler = MinMaxScaler()
+    scaler.fit(x_train)
+    x_train_norm = scaler.transform(x_train)
+    x_test_norm = scaler.transform(x_test)
+    return x_train, x_train_std, x_train_norm, y_train, x_test, x_test_std, x_test_norm, y_test
+
+
+def regression_analysis(dataplot, x, y, neighbors, alpha_ridge, alpha_lasso, max_depth, gamma, C,
+                        activation, alpha_mlp, layers):
+    """Compare regression model features vs the parametrization"""
+    x_model = np.linspace(min(x), max(x), 1000)
+    for p in range(6):
+        name = ''
+        limit = 0
+        y_model = []
+        algorithm = []
+        reg = LinearRegression()
+        reg.fit(x, y)
+        y_model.append(reg.predict(x_model))
+        algorithm.append('Linear Regression')
+        if p == 0:
+            limit = len(neighbors)
+        elif p == 1:
+            limit = len(alpha_ridge)
+        elif p == 2:
+            limit = len(alpha_lasso)
+        elif p == 3:
+            limit = len(max_depth)
+        elif p == 4:
+            limit = len(C)
+        elif p == 5:
+            limit = len(layers)
+        for i in range(limit):
+            if p == 0:
+                reg = KNeighborsRegressor(n_neighbors=neighbors[i])
+                name = 'KNN'
+                algorithm.append(name + ' Regression neighbors=' + str(neighbors[i]))
+            elif p == 1:
+                reg = Ridge(random_state=0, alpha=alpha_ridge[i])
+                name = 'Ridge'
+                algorithm.append(name + ' Regression alpha=' + str(alpha_ridge[i]))
+            elif p == 2:
+                reg = Lasso(random_state=0, alpha=alpha_lasso[i])
+                name = 'Lasso'
+                algorithm.append(name + ' Regression alpha=' + str(alpha_lasso[i]))
+            elif p == 3:
+                reg = DecisionTreeRegressor(random_state=0, max_depth=max_depth[i])
+                name = 'Decision Tree'
+                algorithm.append(name + ' Regression max_depth=' + str(max_depth[i]))
+            elif p == 4:
+                reg = SVR(gamma=gamma, C=C[i])
+                name = 'SVR'
+                algorithm.append(name + ' Regression gamma=' + str(gamma) + ' and C=' + str(C[i]))
+            elif p == 5:
+                reg = MLPRegressor(random_state=0, activation=activation, alpha=alpha_mlp, hidden_layer_sizes=layers[i])
+                name = 'MLP Neural Network'
+                algorithm.append(name + ' Regression alpha=' + str(alpha_mlp) + ' and layers=' + str(layers[i]))
+            reg.fit(x, y)
+            y_model.append(reg.predict(x_model))
+        dataplot.plot_regression(name, x, y, x_model, y_model, algorithm)
+
+
+def optimum_tuning_analysis(dataplot, X_train, X_train2, y_train, X_test, X_test2, y_test, n_neighbors, alpha_ridge,
+                            alpha_lasso, max_depth_tree, n_estimators_random, max_features, max_depth_random,
+                            n_estimators_gradient, learning_rate, max_depth_gradient, gamma, C, activation, alpha_mlp,
+                            hidden_layer_sizes):
+    """Create models per each algorithm based on the optimum tuning for comparison purposes"""
+    reg = KNeighborsRegressor(n_neighbors=n_neighbors)
+    reg.fit(X_train, y_train)
+    y_pred = reg.predict(X_test)
+    error = 0
+    for i in range(len(y_test)):
+        error += abs(y_test[i] - y_pred[i])
+    error /= len(y_test)
+    print('KNeighbors Regressor: {}'.format(error))
+    y_knn = y_pred
+
+    reg = LinearRegression()
+    reg.fit(X_train, y_train)
+    y_pred = reg.predict(X_test)
+    error = 0
+    for i in range(len(y_test)):
+        error += abs(y_test[i] - y_pred[i])
+    error /= len(y_test)
+    print('LinealRegression: {}'.format(error))
+    y_linear = y_pred
+
+    reg = Ridge(random_state=0, alpha=alpha_ridge)
+    reg.fit(X_train, y_train)
+    y_pred = reg.predict(X_test)
+    error = 0
+    for i in range(len(y_test)):
+        error += abs(y_test[i] - y_pred[i])
+    error /= len(y_test)
+    print('Ridge: {}'.format(error))
+    y_ridge = y_pred
+
+    reg = Lasso(random_state=0, alpha=alpha_lasso)
+    reg.fit(X_train, y_train)
+    y_pred = reg.predict(X_test)
+    error = 0
+    for i in range(len(y_test)):
+        error += abs(y_test[i] - y_pred[i])
+    error /= len(y_test)
+    print('Lasso: {}'.format(error))
+    y_lasso = y_pred
+
+    reg = DecisionTreeRegressor(random_state=0, max_depth=max_depth_tree)
+    reg.fit(X_train, y_train)
+    y_pred = reg.predict(X_test)
+    error = 0
+    for i in range(len(y_test)):
+        error += abs(y_test[i] - y_pred[i])
+    error /= len(y_test)
+    print('Decision Tree Regressor: {}'.format(error))
+    y_tree = y_pred
+
+    reg = RandomForestRegressor(random_state=0, n_estimators=n_estimators_random, max_features=max_features,
+                                max_depth=max_depth_random)
+    reg.fit(X_train, y_train)
+    y_pred = reg.predict(X_test)
+    error = 0
+    for i in range(len(y_test)):
+        error += abs(y_test[i] - y_pred[i])
+    error /= len(y_test)
+    print('Random Forest Regressor: {}'.format(error))
+    y_forest = y_pred
+
+    reg = GradientBoostingRegressor(random_state=0, n_estimators=n_estimators_gradient, learning_rate=learning_rate,
+                                    max_depth=max_depth_gradient)
+    reg.fit(X_train, y_train)
+    y_pred = reg.predict(X_test)
+    error = 0
+    for i in range(len(y_test)):
+        error += abs(y_test[i] - y_pred[i])
+    error /= len(y_test)
+    print('Gradient Boosting Regressor: {}'.format(error))
+    y_gradient = y_pred
+
+    reg = SVR(gamma=gamma, C=C)
+    reg.fit(X_train, y_train)
+    y_pred = reg.predict(X_test)
+    error = 0
+    for i in range(len(y_test)):
+        error += abs(y_test[i] - y_pred[i])
+    error /= len(y_test)
+    print('SVR: {}'.format(error))
+    y_svr = y_pred
+
+    reg = MLPRegressor(random_state=0, activation=activation, alpha=alpha_mlp, hidden_layer_sizes=hidden_layer_sizes)
+    reg.fit(X_train2, y_train)
+    y_pred = reg.predict(X_test2)
+    error = 0
+    for i in range(len(y_test)):
+        error += abs(y_test[i] - y_pred[i])
+    error /= len(y_test)
+    print('Multilayer Perceptron Regressor: {}'.format(error))
+    y_mlp = y_pred
+
+    dataplot.compare_regression_plot(ncolumns=3, algorithm=['KNN', 'LINEAR', 'RIDGE', 'LASSO', 'TREE', 'RANDOM FOREST',
+                                                            'GRADIENT BOOSTING', 'SVR', 'MLP'], x=y_test,
+                                     y=[y_knn, y_linear, y_ridge, y_lasso, y_tree, y_forest, y_gradient, y_svr, y_mlp])
 
