@@ -51,20 +51,20 @@ utils.regression_analysis(visualization, train_pca, y_train,
 
 # APPLY OPTIMUM SETTINGS PER ALGORITHM
 utils.optimum_tuning_analysis(visualization, X_train_std, X_train_norm, y_train, X_test_std, X_test_norm, y_test,
-                              n_neighbors=3,
+                              n_neighbors=2,
                               alpha_ridge=0.1,
-                              alpha_lasso=0.001,
-                              max_depth_tree=20,
-                              n_estimators_random=1000, max_features=100, max_depth_random=24,
-                              n_estimators_gradient=1000, learning_rate=0.1, max_depth_gradient=6,
-                              gamma=0.00075, C=100,
-                              activation='tanh', alpha_mlp=0.001, hidden_layer_sizes=[1000, 1000])
+                              alpha_lasso=0.0001,
+                              max_depth_tree=12,
+                              n_estimators_random=50, max_features=120, max_depth_random=20,
+                              n_estimators_gradient=150, learning_rate=0.1, max_depth_gradient=6,
+                              gamma=0.001, C=150,
+                              activation='tanh', alpha_mlp=0.01, hidden_layer_sizes=[500, 500])
 
 # GRID SEARCH AND MODEL OPTIMIZATION
-scoring = 'neg_mean_absolute_error'
+scoring = 'r2'
 params = [
     {'preprocess1': [''], 'preprocess2': ['', 'std', 'norm'], 'estimator': ['knn reg'],
-     'estimator__n_neighbors': [1, 3, 5, 8, 12, 20]},
+     'estimator__n_neighbors': [1, 2, 3, 4, 7, 10, 15]},
     {'preprocess1': ['poly'], 'preprocess2': ['', 'std', 'norm'], 'estimator': ['linear reg'],
      'preprocess1__degree': [(1, 1), (1, 2)]},
     {'preprocess1': [''], 'preprocess2': ['', 'std', 'norm'], 'estimator': ['ridge'],
@@ -72,20 +72,20 @@ params = [
     {'preprocess1': [''], 'preprocess2': ['', 'std', 'norm'], 'estimator': ['lasso'],
      'estimator__alpha': [0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10, 100]},
     {'preprocess1': [''], 'preprocess2': [''], 'estimator': ['tree reg'],
-     'estimator__max_depth': [5, 10, 15, 20, 26, 32, 40, 50, 100, 200]},
+     'estimator__max_depth': [3, 5, 8, 12, 16, 20, 30, 40, 50]},
     {'preprocess1': [''], 'preprocess2': [''], 'estimator': ['random forest reg'],
-     'estimator__n_estimators': [250, 500, 1000, 1500, 2000, 2500], 'estimator__max_depth': [16, 20, 24, 28],
-     'estimator__max_features': [20, 40, 70, 100, 130, 160, 190, 220]},
+     'estimator__n_estimators': [50, 100, 150, 200], 'estimator__max_depth': [5, 10, 15, 20, 25],
+     'estimator__max_features': [40, 80, 120, 160, 200]},
     {'preprocess1': [''], 'preprocess2': [''], 'estimator': ['gradient boosting reg'],
-     'estimator__n_estimators': [250, 500, 1000, 1500, 2000, 2500], 'estimator__max_depth': [4, 6, 8, 10],
-     'estimator__learning_rate': [0.025, 0.05, 0.08, 0.1, 0.3, 0.5, 0.8]},
+     'estimator__n_estimators': [50, 100, 150, 200], 'estimator__max_depth': [2, 4, 6, 8, 10],
+     'estimator__learning_rate': [0.05, 0.075, 0.1, 0.3, 0.5]},
     {'preprocess1': [''], 'preprocess2': ['', 'std', 'norm'], 'estimator': ['svr'],
-     'estimator__gamma': [0.0005, 0.00075, 0.001, 0.003, 0.005, 0.01, 0.03, 0.05, 0.1, 0.5],
-     'estimator__C': [10, 20, 30, 50, 75, 100, 125, 150]},
+     'estimator__gamma': [0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5],
+     'estimator__C': [10, 30, 60, 100, 150]},
     {'preprocess1': [''], 'preprocess2': ['std', 'norm'], 'estimator': ['mlp reg'],
-     'estimator__alpha': [0.001, 0.01, 0.1, 1, 10],
+     'estimator__alpha': [0.001, 0.01, 0.1, 1],
      'estimator__activation': ['tanh', 'relu'],
-     'estimator__hidden_layer_sizes': [250, 500, 1000, [250, 250], [500, 500], [1000, 1000]]}]
+     'estimator__hidden_layer_sizes': [250, 500, [250, 250], [500, 500]]}]
 
 grid = utils.cross_grid_validation(params, X_train, y_train, X_test, y_test, scoring, 5)
 pd_grid = pd.DataFrame(grid.cv_results_)

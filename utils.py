@@ -31,6 +31,9 @@ from sklearn.preprocessing import MinMaxScaler
 from sklearn.pipeline import Pipeline
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics import mean_absolute_error
+from sklearn.metrics import r2_score
+from sklearn.metrics import mean_squared_error
 
 
 def cross_grid_validation(param_grid, X_train, y_train, X_test, y_test, scoring, nfolds=5):
@@ -429,96 +432,114 @@ def optimum_tuning_analysis(dataplot, X_train, X_train2, y_train, X_test, X_test
     reg = KNeighborsRegressor(n_neighbors=n_neighbors)
     reg.fit(X_train, y_train)
     y_pred = reg.predict(X_test)
-    error = 0
-    for i in range(len(y_test)):
-        error += abs(y_test[i] - y_pred[i])
-    error /= len(y_test)
-    print('KNeighbors Regressor: {}'.format(error))
+    y_pred_train = reg.predict(X_train)
+    print('KNeighbors Regressor MAE train score: {}'.format(round(mean_absolute_error(y_train, y_pred_train), 4)))
+    print('KNeighbors Regressor MAE test score: {}'.format(round(mean_absolute_error(y_test, y_pred), 4)))
+    print('KNeighbors Regressor R2 train score: {}'.format(round(r2_score(y_train, y_pred_train), 4)))
+    print('KNeighbors Regressor R2 test score: {}'.format(round(r2_score(y_test, y_pred), 4)))
+    print('KNeighbors Regressor MSE train score: {}'.format(round(mean_squared_error(y_train, y_pred_train), 4)))
+    print('KNeighbors Regressor MSE test score: {}\n'.format(round(mean_squared_error(y_test, y_pred), 4)))
     y_knn = y_pred
 
     reg = LinearRegression()
     reg.fit(X_train, y_train)
     y_pred = reg.predict(X_test)
-    error = 0
-    for i in range(len(y_test)):
-        error += abs(y_test[i] - y_pred[i])
-    error /= len(y_test)
-    print('LinealRegression: {}'.format(error))
+    y_pred_train = reg.predict(X_train)
+    print('Lineal Regression MAE train score: {}'.format(round(mean_absolute_error(y_train, y_pred_train), 4)))
+    print('Lineal Regression MAE test score: {}'.format(round(mean_absolute_error(y_test, y_pred), 4)))
+    print('Lineal Regression R2 train score: {}'.format(round(r2_score(y_train, y_pred_train), 4)))
+    print('Lineal Regression R2 test score: {}'.format(round(r2_score(y_test, y_pred), 4)))
+    print('Lineal Regression MSE train score: {}'.format(round(mean_squared_error(y_train, y_pred_train), 4)))
+    print('Lineal Regression MSE test score: {}\n'.format(round(mean_squared_error(y_test, y_pred), 4)))
     y_linear = y_pred
 
     reg = Ridge(random_state=0, alpha=alpha_ridge)
     reg.fit(X_train, y_train)
     y_pred = reg.predict(X_test)
-    error = 0
-    for i in range(len(y_test)):
-        error += abs(y_test[i] - y_pred[i])
-    error /= len(y_test)
-    print('Ridge: {}'.format(error))
+    y_pred_train = reg.predict(X_train)
+    print('Ridge Regression MAE train score: {}'.format(round(mean_absolute_error(y_train, y_pred_train), 4)))
+    print('Ridge Regression MAE test score: {}'.format(round(mean_absolute_error(y_test, y_pred), 4)))
+    print('Ridge Regression R2 train score: {}'.format(round(r2_score(y_train, y_pred_train), 4)))
+    print('Ridge Regression R2 test score: {}'.format(round(r2_score(y_test, y_pred), 4)))
+    print('Ridge Regression MSE train score: {}'.format(round(mean_squared_error(y_train, y_pred_train), 4)))
+    print('Ridge Regression MSE test score: {}\n'.format(round(mean_squared_error(y_test, y_pred), 4)))
     y_ridge = y_pred
 
     reg = Lasso(random_state=0, alpha=alpha_lasso)
     reg.fit(X_train, y_train)
     y_pred = reg.predict(X_test)
-    error = 0
-    for i in range(len(y_test)):
-        error += abs(y_test[i] - y_pred[i])
-    error /= len(y_test)
-    print('Lasso: {}'.format(error))
+    y_pred_train = reg.predict(X_train)
+    print('Lasso Regression MAE train score: {}'.format(round(mean_absolute_error(y_train, y_pred_train), 4)))
+    print('Lasso Regression MAE test score: {}'.format(round(mean_absolute_error(y_test, y_pred), 4)))
+    print('Lasso Regression R2 train score: {}'.format(round(r2_score(y_train, y_pred_train), 4)))
+    print('Lasso Regression R2 test score: {}'.format(round(r2_score(y_test, y_pred), 4)))
+    print('Lasso Regression MSE train score: {}'.format(round(mean_squared_error(y_train, y_pred_train), 4)))
+    print('Lasso Regression MSE test score: {}\n'.format(round(mean_squared_error(y_test, y_pred), 4)))
     y_lasso = y_pred
 
     reg = DecisionTreeRegressor(random_state=0, max_depth=max_depth_tree)
     reg.fit(X_train, y_train)
     y_pred = reg.predict(X_test)
-    error = 0
-    for i in range(len(y_test)):
-        error += abs(y_test[i] - y_pred[i])
-    error /= len(y_test)
-    print('Decision Tree Regressor: {}'.format(error))
+    y_pred_train = reg.predict(X_train)
+    print('Decision Tree Regressor MAE train score: {}'.format(round(mean_absolute_error(y_train, y_pred_train), 4)))
+    print('Decision Tree Regressor MAE test score: {}'.format(round(mean_absolute_error(y_test, y_pred), 4)))
+    print('Decision Tree Regressor R2 train score: {}'.format(round(r2_score(y_train, y_pred_train), 4)))
+    print('Decision Tree Regressor R2 test score: {}'.format(round(r2_score(y_test, y_pred), 4)))
+    print('Decision Tree Regressor MSE train score: {}'.format(round(mean_squared_error(y_train, y_pred_train), 4)))
+    print('Decision Tree Regressor MSE test score: {}\n'.format(round(mean_squared_error(y_test, y_pred), 4)))
     y_tree = y_pred
 
     reg = RandomForestRegressor(random_state=0, n_estimators=n_estimators_random, max_features=max_features,
                                 max_depth=max_depth_random)
     reg.fit(X_train, y_train)
     y_pred = reg.predict(X_test)
-    error = 0
-    for i in range(len(y_test)):
-        error += abs(y_test[i] - y_pred[i])
-    error /= len(y_test)
-    print('Random Forest Regressor: {}'.format(error))
+    y_pred_train = reg.predict(X_train)
+    print('Random Forest Regressor MAE train score: {}'.format(round(mean_absolute_error(y_train, y_pred_train), 4)))
+    print('Random Forest Regressor MAE test score: {}'.format(round(mean_absolute_error(y_test, y_pred), 4)))
+    print('Random Forest Regressor R2 train score: {}'.format(round(r2_score(y_train, y_pred_train), 4)))
+    print('Random Forest Regressor R2 test score: {}'.format(round(r2_score(y_test, y_pred), 4)))
+    print('Random Forest Regressor MSE train score: {}'.format(round(mean_squared_error(y_train, y_pred_train), 4)))
+    print('Random Forest Regressor MSE test score: {}\n'.format(round(mean_squared_error(y_test, y_pred), 4)))
     y_forest = y_pred
 
     reg = GradientBoostingRegressor(random_state=0, n_estimators=n_estimators_gradient, learning_rate=learning_rate,
                                     max_depth=max_depth_gradient)
     reg.fit(X_train, y_train)
     y_pred = reg.predict(X_test)
-    error = 0
-    for i in range(len(y_test)):
-        error += abs(y_test[i] - y_pred[i])
-    error /= len(y_test)
-    print('Gradient Boosting Regressor: {}'.format(error))
+    y_pred_train = reg.predict(X_train)
+    print('Gradient Boosting Regressor MAE train score: {}'.format(round(mean_absolute_error(y_train, y_pred_train), 4)))
+    print('Gradient Boosting Regressor MAE test score: {}'.format(round(mean_absolute_error(y_test, y_pred), 4)))
+    print('Gradient Boosting Regressor R2 train score: {}'.format(round(r2_score(y_train, y_pred_train), 4)))
+    print('Gradient Boosting Regressor R2 test score: {}'.format(round(r2_score(y_test, y_pred), 4)))
+    print('Gradient Boosting Regressor MSE train score: {}'.format(round(mean_squared_error(y_train, y_pred_train), 4)))
+    print('Gradient Boosting Regressor MSE test score: {}\n'.format(round(mean_squared_error(y_test, y_pred), 4)))
     y_gradient = y_pred
 
     reg = SVR(gamma=gamma, C=C)
     reg.fit(X_train, y_train)
     y_pred = reg.predict(X_test)
-    error = 0
-    for i in range(len(y_test)):
-        error += abs(y_test[i] - y_pred[i])
-    error /= len(y_test)
-    print('SVR: {}'.format(error))
+    y_pred_train = reg.predict(X_train)
+    print('SVR MAE train score: {}'.format(round(mean_absolute_error(y_train, y_pred_train), 4)))
+    print('SVR MAE test score: {}'.format(round(mean_absolute_error(y_test, y_pred), 4)))
+    print('SVR R2 train score: {}'.format(round(r2_score(y_train, y_pred_train), 4)))
+    print('SVR R2 test score: {}'.format(round(r2_score(y_test, y_pred), 4)))
+    print('SVR MSE train score: {}'.format(round(mean_squared_error(y_train, y_pred_train), 4)))
+    print('SVR MSE test score: {}\n'.format(round(mean_squared_error(y_test, y_pred), 4)))
     y_svr = y_pred
 
     reg = MLPRegressor(random_state=0, activation=activation, alpha=alpha_mlp, hidden_layer_sizes=hidden_layer_sizes)
     reg.fit(X_train2, y_train)
     y_pred = reg.predict(X_test2)
-    error = 0
-    for i in range(len(y_test)):
-        error += abs(y_test[i] - y_pred[i])
-    error /= len(y_test)
-    print('Multilayer Perceptron Regressor: {}'.format(error))
+    y_pred_train = reg.predict(X_train2)
+    print('MLP MAE train score: {}'.format(round(mean_absolute_error(y_train, y_pred_train), 4)))
+    print('MLP MAE test score: {}'.format(round(mean_absolute_error(y_test, y_pred), 4)))
+    print('MLP R2 train score: {}'.format(round(r2_score(y_train, y_pred_train), 4)))
+    print('MLP R2 test score: {}'.format(round(r2_score(y_test, y_pred), 4)))
+    print('MLP MSE train score: {}'.format(round(mean_squared_error(y_train, y_pred_train), 4)))
+    print('MLP MSE test score: {}\n'.format(round(mean_squared_error(y_test, y_pred), 4)))
     y_mlp = y_pred
 
     dataplot.compare_regression_plot(ncolumns=3, algorithm=['KNN', 'LINEAR', 'RIDGE', 'LASSO', 'TREE', 'RANDOM FOREST',
-                                                            'GRADIENT BOOSTING', 'SVR', 'MLP'], x=y_test,
-                                     y=[y_knn, y_linear, y_ridge, y_lasso, y_tree, y_forest, y_gradient, y_svr, y_mlp])
+                                                            'GRADIENT BOOSTING', 'SVR', 'MLP'], y_true=y_test,
+                                     y_pred=[y_knn, y_linear, y_ridge, y_lasso, y_tree, y_forest, y_gradient, y_svr, y_mlp])
 

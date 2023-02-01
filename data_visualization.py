@@ -107,7 +107,7 @@ class DataPlot:
         plt.savefig('Correlation matrix target.png', bbox_inches='tight')
         plt.clf()
 
-    def compare_regression_plot(self, ncolumns, algorithm, x, y):
+    def compare_regression_plot(self, ncolumns, algorithm, y_true, y_pred):
         """Plot regression model vs real input for different algorithms"""
         nplots = len(algorithm)
         # Regression comparison y_test vs y_pred
@@ -124,11 +124,9 @@ class DataPlot:
         ax = axes.ravel()
         cmap = cm.get_cmap('tab10')
         colors = cmap.colors
-        max_dev = 0
         for i in range(nplots):
-            max_dev = max(max_dev, max(abs(y[i] - x)))
-            ax[i].scatter(x, x, s=10, marker='o', c='black', label='Input data')
-            ax[i].scatter(x, y[i], color=colors[i % len(colors)], s=10, marker='^', label=algorithm[i])
+            ax[i].scatter(y_true, y_true, s=10, marker='o', c='black', label='Input data')
+            ax[i].scatter(y_true, y_pred[i], color=colors[i % len(colors)], s=10, marker='^', label=algorithm[i])
             ax[i].set_title(algorithm[i].upper() + ' model output vs input data', fontsize=18, fontweight='bold')
             ax[i].set_xlabel('Input data', fontsize=14, weight='bold')
             ax[i].set_ylabel('Model output', fontsize=14, weight='bold')
@@ -146,12 +144,12 @@ class DataPlot:
         for i in range(nworst):
             matrix[i, 0] = i + 1
             for j in range(nplots):
-                dev = abs(y[j] - x)
+                dev = abs(y_pred[j] - y_true)
                 index = np.argsort(dev)[-(i + 1)]
                 matrix[i, j + 1] = dev[index]
         label = []
         for i in range(nplots):
-            label.append(algorithm[i].upper() + ' (mean: ' + str(np.round(np.mean(abs(y[i] - x)), 2)) + ')')
+            label.append(algorithm[i].upper() + ' (mean: ' + str(np.round(np.mean(abs(y_pred[i] - y_true)), 2)) + ')')
         df = pd.DataFrame(matrix, columns=['X'] + label)
         df.plot(x='X', y=label, kind="bar", rot=0, ax=ax)
         plt.title('Worst test cases deviation assessment', fontsize=24)
