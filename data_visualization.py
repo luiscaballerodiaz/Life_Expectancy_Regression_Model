@@ -37,7 +37,7 @@ class DataPlot:
         plt.subplots_adjust(top=0.85)
         fig.tight_layout()
         plt.savefig(plot_name + '.png', bbox_inches='tight')
-        plt.clf()
+        plt.close()
 
     def target_vs_feature(self, dataset, target, plot_name, ncolumns):
         """Plot the target vs each feature"""
@@ -59,7 +59,7 @@ class DataPlot:
         plt.subplots_adjust(top=0.85)
         fig.tight_layout()
         plt.savefig(plot_name + '.png', bbox_inches='tight')
-        plt.clf()
+        plt.close()
 
     def correlation_plot(self, dataset, target):
         """Plot the correlation matrix among features"""
@@ -83,7 +83,7 @@ class DataPlot:
         plt.title("Correlation matrix among all features", weight='bold', fontsize=24)
         fig.tight_layout()
         plt.savefig('Correlation matrix all features.png', bbox_inches='tight')
-        plt.clf()
+        plt.close()
         # ONLY LIFE EXPECTANCY
         fig, ax = plt.subplots(figsize=(self.fig_width, self.fig_height))
         index = 0
@@ -105,9 +105,9 @@ class DataPlot:
         plt.title("Correlation matrix regarding target feature", weight='bold', fontsize=24)
         fig.tight_layout()
         plt.savefig('Correlation matrix target.png', bbox_inches='tight')
-        plt.clf()
+        plt.close()
 
-    def compare_regression_plot(self, ncolumns, algorithm, y_true, y_pred):
+    def compare_regression_plot(self, ncolumns, algorithm, y_true, y_pred, tag):
         """Plot regression model vs real input for different algorithms"""
         nplots = len(algorithm)
         # Regression comparison y_test vs y_pred
@@ -132,11 +132,11 @@ class DataPlot:
             ax[i].set_ylabel('Model output', fontsize=14, weight='bold')
             ax[i].legend()
             ax[i].grid(visible=True)
-        fig.suptitle('Regression comparison among different algorithms', fontsize=24, fontweight='bold')
+        fig.suptitle('Regression comparison among different algorithms (' + tag + ')', fontsize=24, fontweight='bold')
         plt.subplots_adjust(top=0.85)
         fig.tight_layout()
-        plt.savefig('Regression comparison.png', bbox_inches='tight')
-        plt.clf()
+        plt.savefig('Regression comparison ' + tag + '.png', bbox_inches='tight')
+        plt.close()
         # Assess the worst deviation cases
         fig, ax = plt.subplots(figsize=(self.fig_width, self.fig_height))
         nworst = 5
@@ -152,13 +152,62 @@ class DataPlot:
             label.append(algorithm[i].upper() + ' (mean: ' + str(np.round(np.mean(abs(y_pred[i] - y_true)), 2)) + ')')
         df = pd.DataFrame(matrix, columns=['X'] + label)
         df.plot(x='X', y=label, kind="bar", rot=0, ax=ax)
-        plt.title('Worst test cases deviation assessment', fontsize=24)
+        plt.title('Worst test cases deviation assessment (' + tag + ')', fontsize=24)
         plt.xlabel('Worst test cases', fontweight='bold', fontsize=14)
         plt.ylabel('Max deviation', fontweight='bold', fontsize=14)
         plt.legend()
         plt.grid()
-        plt.savefig('Regression max deviation.png', bbox_inches='tight')
-        plt.clf()
+        plt.savefig('Regression max deviation ' + tag + '.png', bbox_inches='tight')
+        plt.close()
+
+    def compare_ensembled_models(self, metric, y_true, y_pred, weights_ini, labels_ini):
+        """Plot regression model vs real input for different algorithms"""
+        # Regression comparison y_test vs y_pred
+        fig, axes = plt.subplots(2, 3, figsize=(self.fig_width, self.fig_height))
+        cmap = cm.get_cmap('tab10')
+        colors = cmap.colors
+        ax = axes.ravel()
+        for i in range(len(metric) * 2):
+            if i < len(metric):
+                ax[i].scatter(y_true, y_true, s=10, marker='o', c='black', label='Input data')
+                ax[i].scatter(y_true, y_pred[i], color=colors[i % len(colors)], s=10, marker='^', label=metric[i])
+                ax[i].set_title('Ensembled model optimizing ' + metric[i].upper(), fontsize=20, fontweight='bold')
+                ax[i].set_xlabel('Input data', fontsize=14, weight='bold')
+                ax[i].set_ylabel('Model output', fontsize=14, weight='bold')
+                ax[i].legend()
+                ax[i].grid(visible=True)
+            else:
+                # Rearrange data to avoid plot overlapping
+                j = i - len(metric)
+                index_to_remove = []
+                for h in range(len(labels_ini)):
+                    if weights_ini[j][h] < 0.00001:
+                        index_to_remove.append(h)
+                index_to_remove.reverse()
+                weights = weights_ini[j].copy()
+                labels = labels_ini.copy()
+                weights = weights.tolist()
+                for h in range(len(index_to_remove)):
+                    weights.pop(index_to_remove[h])
+                    labels.pop(index_to_remove[h])
+                explode = [0.1] * len(weights)
+                ax[i].pie(x=weights, explode=explode, labels=labels, autopct='%1.1f%%',
+                          shadow=True, textprops={'fontsize': 16})
+                ax[i].set_title('Ensembled model optimizing ' + metric[j].upper(), fontsize=20, fontweight='bold')
+                ax[i].legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=True, shadow=True, ncol=3)
+        fig.suptitle('Regression comparison ensembled models', fontsize=24, fontweight='bold')
+        plt.subplots_adjust(top=0.85)
+        fig.tight_layout()
+        plt.savefig('Regression comparison ensembled models.png', bbox_inches='tight')
+        plt.close()
+
+    # @staticmethod
+    # def make_autopct(values):
+    #     def my_autopct(pct):
+    #         val = int(round(pct * sum(values) / 100.0))
+    #         return '{}\n{:.1f}%'.format(val, pct)
+    #
+    #     return my_autopct
 
     def plot_params_sweep(self, algorithm, test_values, fixed_params,
                           xtick='', ytick='', ztick='', xtag='', ytag='', ztag=''):
@@ -217,7 +266,7 @@ class DataPlot:
             plt.subplots_adjust(top=0.85)
         fig.tight_layout()
         plt.savefig('Parameter sweep ' + algorithm.upper() + ' algorithm.png', bbox_inches='tight')
-        plt.clf()
+        plt.close()
 
     def plot_regression(self, name, x_real, y_real, x_model, y_model, algorithm):
         """Plot regression model vs real target value"""
@@ -233,4 +282,4 @@ class DataPlot:
         plt.legend()
         plt.grid()
         plt.savefig('Regression ' + name.upper() + ' analysis.png', bbox_inches='tight')
-        plt.clf()
+        plt.close()

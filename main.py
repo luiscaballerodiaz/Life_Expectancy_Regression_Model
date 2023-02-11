@@ -39,6 +39,17 @@ print('Definitive feature shape: \n{}\n'.format(list_features.shape))
 X_train, X_train_std, X_train_norm, y_train, X_test, X_test_std, X_test_norm, y_test = utils.data_split_scale(
     sourcedf, target, test_size=0.25)
 
+# APPLY OPTIMUM SETTINGS PER ALGORITHM
+utils.optimal_tuning_and_ensemble(visualization, X_train_std, X_train_norm, y_train, X_test_std, X_test_norm, y_test,
+                                  n_neighbors=2,
+                                  alpha_ridge=0.1,
+                                  alpha_lasso=0.0001,
+                                  max_depth_tree=12,
+                                  n_estimators_random=50, max_features=120, max_depth_random=20,
+                                  n_estimators_gradient=150, learning_rate=0.1, max_depth_gradient=6,
+                                  gamma=0.001, C=150,
+                                  activation='tanh', alpha_mlp=0.01, hidden_layer_sizes=[500, 500])
+
 # APPLY PCA TO ASSESS REGRESSION
 train_pca = pca.apply_pca(X_train_std, 1)
 utils.regression_analysis(visualization, train_pca, y_train,
@@ -48,17 +59,6 @@ utils.regression_analysis(visualization, train_pca, y_train,
                           max_depth=[10, 50],
                           gamma=0.1, C=[0.01, 10, 1000],
                           activation='tanh', alpha_mlp=0.01, layers=[50, [100, 100], [1000, 1000]])
-
-# APPLY OPTIMUM SETTINGS PER ALGORITHM
-utils.optimum_tuning_analysis(visualization, X_train_std, X_train_norm, y_train, X_test_std, X_test_norm, y_test,
-                              n_neighbors=2,
-                              alpha_ridge=0.1,
-                              alpha_lasso=0.0001,
-                              max_depth_tree=12,
-                              n_estimators_random=50, max_features=120, max_depth_random=20,
-                              n_estimators_gradient=150, learning_rate=0.1, max_depth_gradient=6,
-                              gamma=0.001, C=150,
-                              activation='tanh', alpha_mlp=0.01, hidden_layer_sizes=[500, 500])
 
 # GRID SEARCH AND MODEL OPTIMIZATION
 scoring = 'r2'

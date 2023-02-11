@@ -34,6 +34,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics import mean_absolute_error
 from sklearn.metrics import r2_score
 from sklearn.metrics import mean_squared_error
+from scipy.optimize import minimize
 
 
 def cross_grid_validation(param_grid, X_train, y_train, X_test, y_test, scoring, nfolds=5):
@@ -424,10 +425,10 @@ def regression_analysis(dataplot, x, y, neighbors, alpha_ridge, alpha_lasso, max
         dataplot.plot_regression(name, x, y, x_model, y_model, algorithm)
 
 
-def optimum_tuning_analysis(dataplot, X_train, X_train2, y_train, X_test, X_test2, y_test, n_neighbors, alpha_ridge,
-                            alpha_lasso, max_depth_tree, n_estimators_random, max_features, max_depth_random,
-                            n_estimators_gradient, learning_rate, max_depth_gradient, gamma, C, activation, alpha_mlp,
-                            hidden_layer_sizes):
+def optimal_tuning_and_ensemble(dataplot, X_train, X_train2, y_train, X_test, X_test2, y_test, n_neighbors, alpha_ridge,
+                                alpha_lasso, max_depth_tree, n_estimators_random, max_features, max_depth_random,
+                                n_estimators_gradient, learning_rate, max_depth_gradient, gamma, C, activation,
+                                alpha_mlp, hidden_layer_sizes):
     """Create models per each algorithm based on the optimum tuning for comparison purposes"""
     reg = KNeighborsRegressor(n_neighbors=n_neighbors)
     reg.fit(X_train, y_train)
@@ -507,7 +508,8 @@ def optimum_tuning_analysis(dataplot, X_train, X_train2, y_train, X_test, X_test
     reg.fit(X_train, y_train)
     y_pred = reg.predict(X_test)
     y_pred_train = reg.predict(X_train)
-    print('Gradient Boosting Regressor MAE train score: {}'.format(round(mean_absolute_error(y_train, y_pred_train), 4)))
+    print(
+        'Gradient Boosting Regressor MAE train score: {}'.format(round(mean_absolute_error(y_train, y_pred_train), 4)))
     print('Gradient Boosting Regressor MAE test score: {}'.format(round(mean_absolute_error(y_test, y_pred), 4)))
     print('Gradient Boosting Regressor R2 train score: {}'.format(round(r2_score(y_train, y_pred_train), 4)))
     print('Gradient Boosting Regressor R2 test score: {}'.format(round(r2_score(y_test, y_pred), 4)))
@@ -539,7 +541,66 @@ def optimum_tuning_analysis(dataplot, X_train, X_train2, y_train, X_test, X_test
     print('MLP MSE test score: {}\n'.format(round(mean_squared_error(y_test, y_pred), 4)))
     y_mlp = y_pred
 
+    y_pred_models = [y_knn, y_linear, y_ridge, y_lasso, y_tree, y_forest, y_gradient, y_svr, y_mlp]
     dataplot.compare_regression_plot(ncolumns=3, algorithm=['KNN', 'LINEAR', 'RIDGE', 'LASSO', 'TREE', 'RANDOM FOREST',
-                                                            'GRADIENT BOOSTING', 'SVR', 'MLP'], y_true=y_test,
-                                     y_pred=[y_knn, y_linear, y_ridge, y_lasso, y_tree, y_forest, y_gradient, y_svr, y_mlp])
+                                                            'GRADIENT BOOSTING', 'SVR', 'MLP'],
+                                     y_true=y_test, y_pred=y_pred_models, tag='optimal tuning')
 
+    y_test = np.array(y_test)
+    y_pred_models = np.array(y_pred_models).transpose()
+    weights_ini = np.array([1 / y_pred_models.shape[1]] * y_pred_models.shape[1])
+    mae = minimize(fun=minimize_mae,
+                   x0=weights_ini,
+                   method='SLSQP',
+                   args=(y_test, y_pred_models),
+                   bounds=[(0, 1)] * y_pred_models.shape[1],
+                   options={'disp': True, 'maxiter': 10000, 'eps': 1e-10, 'ftol': 1e-8},
+                   constraints={'type': 'eq', 'fun': lambda w: w.sum() - 1})
+    y_mae = np.dot(y_pred_models, mae.x)
+    print('MAE test score: {}'.format(round(mean_absolute_error(y_test, y_mae), 4)))
+    print('R2 test score: {}'.format(round(r2_score(y_test, y_mae), 4)))
+    print('MSE test score: {}\n'.format(round(mean_squared_error(y_test, y_mae), 4)))
+
+    mse = minimize(fun=minimize_mse,
+                   x0=weights_ini,
+                   method='SLSQP',
+                   args=(y_test, y_pred_models),
+                   bounds=[(0, 1)] * y_pred_models.shape[1],
+                   options={'disp': True, 'maxiter': 10000, 'eps': 1e-10, 'ftol': 1e-8},
+                   constraints={'type': 'eq', 'fun': lambda w: w.sum() - 1})
+    y_mse = np.dot(y_pred_models, mse.x)
+    print('MAE test score: {}'.format(round(mean_absolute_error(y_test, y_mse), 4)))
+    print('R2 test score: {}'.format(round(r2_score(y_test, y_mse), 4)))
+    print('MSE test score: {}\n'.format(round(mean_squared_error(y_test, y_mse), 4)))
+
+    r2 = minimize(fun=minimize_r2,
+                  x0=weights_ini,
+                  method='SLSQP',
+                  args=(y_test, y_pred_models),
+                  bounds=[(0, 1)] * y_pred_models.shape[1],
+                  options={'disp': True, 'maxiter': 10000, 'eps': 1e-10, 'ftol': 1e-8},
+                  constraints={'type': 'eq', 'fun': lambda w: w.sum() - 1})
+    y_r2 = np.dot(y_pred_models, r2.x)
+    print('MAE test score: {}'.format(round(mean_absolute_error(y_test, y_r2), 4)))
+    print('R2 test score: {}'.format(round(r2_score(y_test, y_r2), 4)))
+    print('MSE test score: {}\n'.format(round(mean_squared_error(y_test, y_r2), 4)))
+
+    dataplot.compare_ensembled_models(metric=['MAE', 'MSE', 'R2'], y_true=y_test, y_pred=[y_mae, y_mse, y_r2],
+                                      weights_ini=[mae.x, mse.x, r2.x], labels_ini=['KNN', 'LINEAR', 'RIDGE', 'LASSO',
+                                                                                    'TREE', 'RANDOM FOREST',
+                                                                                    'GRADIENT BOOSTING', 'SVR', 'MLP'])
+
+
+def minimize_mae(weights, y_test, y_pred_models):
+    """ Calculate the score of a weighted model predictions"""
+    return (np.sum(np.absolute(y_test - np.dot(y_pred_models, weights)))) / y_test.shape[0]
+
+
+def minimize_mse(weights, y_test, y_pred_models):
+    """ Calculate the score of a weighted model predictions"""
+    return (np.sum(np.square(y_test - np.dot(y_pred_models, weights)))) / y_test.shape[0]
+
+
+def minimize_r2(weights, y_test, y_pred_models):
+    """ Calculate the score of a weighted model predictions"""
+    return -r2_score(y_test, np.dot(y_pred_models, weights))
