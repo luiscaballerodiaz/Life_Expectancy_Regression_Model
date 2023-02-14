@@ -548,47 +548,59 @@ def optimal_tuning_and_ensemble(dataplot, X_train, X_train2, y_train, X_test, X_
 
     y_test = np.array(y_test)
     y_pred_models = np.array(y_pred_models).transpose()
-    weights_ini = np.array([1 / y_pred_models.shape[1]] * y_pred_models.shape[1])
-    mae = minimize(fun=minimize_mae,
-                   x0=weights_ini,
-                   method='SLSQP',
-                   args=(y_test, y_pred_models),
-                   bounds=[(0, 1)] * y_pred_models.shape[1],
-                   options={'disp': True, 'maxiter': 10000, 'eps': 1e-10, 'ftol': 1e-8},
-                   constraints={'type': 'eq', 'fun': lambda w: w.sum() - 1})
-    y_mae = np.dot(y_pred_models, mae.x)
+    mae_opt = 100
+    mse_opt = 100
+    r2_opt = 100
+    for i in range(10):
+        weights_ini = np.random.rand(y_pred_models.shape[1])
+        weights_ini /= np.sum(weights_ini)
+        mae = minimize(fun=minimize_mae,
+                       x0=weights_ini,
+                       method='SLSQP',
+                       args=(y_test, y_pred_models),
+                       bounds=[(0, 1)] * y_pred_models.shape[1],
+                       options={'disp': True, 'maxiter': 10000, 'eps': 1e-10, 'ftol': 1e-8},
+                       constraints={'type': 'eq', 'fun': lambda w: w.sum() - 1})
+        mse = minimize(fun=minimize_mse,
+                       x0=weights_ini,
+                       method='SLSQP',
+                       args=(y_test, y_pred_models),
+                       bounds=[(0, 1)] * y_pred_models.shape[1],
+                       options={'disp': True, 'maxiter': 10000, 'eps': 1e-10, 'ftol': 1e-8},
+                       constraints={'type': 'eq', 'fun': lambda w: w.sum() - 1})
+        r2 = minimize(fun=minimize_r2,
+                      x0=weights_ini,
+                      method='SLSQP',
+                      args=(y_test, y_pred_models),
+                      bounds=[(0, 1)] * y_pred_models.shape[1],
+                      options={'disp': True, 'maxiter': 10000, 'eps': 1e-10, 'ftol': 1e-8},
+                      constraints={'type': 'eq', 'fun': lambda w: w.sum() - 1})
+        if mae.fun < mae_opt:
+            mae_opt = mae.fun
+            mae_weights_opt = mae.x
+        if mse.fun < mse_opt:
+            mse_opt = mse.fun
+            mse_weights_opt = mse.x
+        if r2.fun < r2_opt:
+            r2_opt = r2.fun
+            r2_weights_opt = r2.x
+    y_mae = np.dot(y_pred_models, mae_weights_opt)
     print('MAE test score: {}'.format(round(mean_absolute_error(y_test, y_mae), 4)))
     print('R2 test score: {}'.format(round(r2_score(y_test, y_mae), 4)))
     print('MSE test score: {}\n'.format(round(mean_squared_error(y_test, y_mae), 4)))
-
-    mse = minimize(fun=minimize_mse,
-                   x0=weights_ini,
-                   method='SLSQP',
-                   args=(y_test, y_pred_models),
-                   bounds=[(0, 1)] * y_pred_models.shape[1],
-                   options={'disp': True, 'maxiter': 10000, 'eps': 1e-10, 'ftol': 1e-8},
-                   constraints={'type': 'eq', 'fun': lambda w: w.sum() - 1})
-    y_mse = np.dot(y_pred_models, mse.x)
+    y_mse = np.dot(y_pred_models, mse_weights_opt)
     print('MAE test score: {}'.format(round(mean_absolute_error(y_test, y_mse), 4)))
     print('R2 test score: {}'.format(round(r2_score(y_test, y_mse), 4)))
     print('MSE test score: {}\n'.format(round(mean_squared_error(y_test, y_mse), 4)))
-
-    r2 = minimize(fun=minimize_r2,
-                  x0=weights_ini,
-                  method='SLSQP',
-                  args=(y_test, y_pred_models),
-                  bounds=[(0, 1)] * y_pred_models.shape[1],
-                  options={'disp': True, 'maxiter': 10000, 'eps': 1e-10, 'ftol': 1e-8},
-                  constraints={'type': 'eq', 'fun': lambda w: w.sum() - 1})
-    y_r2 = np.dot(y_pred_models, r2.x)
+    y_r2 = np.dot(y_pred_models, r2_weights_opt)
     print('MAE test score: {}'.format(round(mean_absolute_error(y_test, y_r2), 4)))
     print('R2 test score: {}'.format(round(r2_score(y_test, y_r2), 4)))
     print('MSE test score: {}\n'.format(round(mean_squared_error(y_test, y_r2), 4)))
 
     dataplot.compare_ensembled_models(metric=['MAE', 'MSE', 'R2'], y_true=y_test, y_pred=[y_mae, y_mse, y_r2],
-                                      weights_ini=[mae.x, mse.x, r2.x], labels_ini=['KNN', 'LINEAR', 'RIDGE', 'LASSO',
-                                                                                    'TREE', 'RANDOM FOREST',
-                                                                                    'GRADIENT BOOSTING', 'SVR', 'MLP'])
+                                      weights_ini=[mae_weights_opt, mse_weights_opt, r2_weights_opt],
+                                      labels_ini=['KNN', 'LINEAR', 'RIDGE', 'LASSO', 'TREE', 'RANDOM FOREST',
+                                                  'GRADIENT BOOSTING', 'SVR', 'MLP'])
 
 
 def minimize_mae(weights, y_test, y_pred_models):
