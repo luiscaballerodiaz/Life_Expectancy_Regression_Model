@@ -1,5 +1,4 @@
 import pandas as pd
-import sys
 import utils
 from data_visualization import DataPlot
 from pca_analysis import PCAanalysis
@@ -50,7 +49,7 @@ utils.optimal_tuning_and_ensemble(visualization, X_train_std, X_train_norm, y_tr
                                   n_estimators_gradient=150, learning_rate=0.1, max_depth_gradient=6,
                                   gamma=0.001, C=150,
                                   activation='tanh', alpha_mlp=0.01, hidden_layer_sizes=[500, 500])
-sys.exit('sss')
+
 # APPLY PCA TO ASSESS REGRESSION
 train_pca = pca.apply_pca(X_train_std, 1)
 utils.regression_analysis(visualization, train_pca, y_train,
