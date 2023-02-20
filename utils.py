@@ -556,7 +556,6 @@ def optimal_tuning_and_ensemble(dataplot, X_train, X_train2, y_train, X_test, X_
     dataplot.compare_regression_plot(ncolumns=3, algorithm=['KNN', 'LINEAR', 'RIDGE', 'LASSO', 'TREE', 'RANDOM FOREST',
                                                             'GRADIENT BOOSTING', 'SVR', 'MLP'],
                                      y_true=y_test, y_pred=y_pred_test, tag='optimal tuning')
-
     y_test = np.array(y_test)
     y_pred_test = np.array(y_pred_test).transpose()
     mae_opt = 100
