@@ -553,36 +553,101 @@ def optimal_tuning_and_ensemble(dataplot, X_train, X_train2, y_train, X_test, X_
     y_pred_test = [y_knn, y_linear, y_ridge, y_lasso, y_tree, y_forest, y_gradient, y_svr, y_mlp]
     y_pred_train = [y_knn_train, y_linear_train, y_ridge_train, y_lasso_train, y_tree_train, y_forest_train,
                     y_gradient_train, y_svr_train, y_mlp_train]
+
     dataplot.compare_regression_plot(ncolumns=3, algorithm=['KNN', 'LINEAR', 'RIDGE', 'LASSO', 'TREE', 'RANDOM FOREST',
                                                             'GRADIENT BOOSTING', 'SVR', 'MLP'],
                                      y_true=y_test, y_pred=y_pred_test, tag='optimal tuning')
+
     y_test = np.array(y_test)
     y_pred_test = np.array(y_pred_test).transpose()
+    y_train = np.array(y_train)
+    y_pred_train = np.array(y_pred_train).transpose()
+
+    mae_weights_opt_train, mse_weights_opt_train, r2_weights_opt_train = calculate_optimal_weights(y_train, y_pred_train)
+    mae_weights_opt_test, mse_weights_opt_test, r2_weights_opt_test = calculate_optimal_weights(y_test, y_pred_test)
+    weights_opt = np.array([0, 0, 0.067304816, 0, 0, 0, 0.345797188, 0.454980556, 0.131917439])
+
+    y_mae_train = np.dot(y_pred_test, mae_weights_opt_train)
+    y_mae_test = np.dot(y_pred_test, mae_weights_opt_test)
+    y_mse_train = np.dot(y_pred_test, mse_weights_opt_train)
+    y_mse_test = np.dot(y_pred_test, mse_weights_opt_test)
+    y_r2_train = np.dot(y_pred_test, r2_weights_opt_train)
+    y_r2_test = np.dot(y_pred_test, r2_weights_opt_test)
+    y_custom = np.dot(y_pred_test, weights_opt)
+
+    print_results(y_test, [y_mae_train, y_mse_train, y_r2_train], 'training set')
+    print_results(y_test, [y_mae_test, y_mse_test, y_r2_test], 'testing set')
+    print_results(y_test, y_custom, 'custom weights')
+
+    dataplot.compare_ensembled_models(tag='training set', metric=['MAE', 'MSE', 'R2'], y_true=y_test,
+                                      y_pred=[y_mae_train, y_mse_train, y_r2_train],
+                                      weights_ini=[mae_weights_opt_train, mse_weights_opt_train, r2_weights_opt_train],
+                                      labels_ini=['KNN', 'LINEAR', 'RIDGE', 'LASSO', 'TREE', 'RANDOM FOREST',
+                                                  'GRADIENT BOOSTING', 'SVR', 'MLP'])
+    dataplot.compare_ensembled_models(tag='testing set', metric=['MAE', 'MSE', 'R2'], y_true=y_test,
+                                      y_pred=[y_mae_test, y_mse_test, y_r2_test],
+                                      weights_ini=[mae_weights_opt_test, mse_weights_opt_test, r2_weights_opt_test],
+                                      labels_ini=['KNN', 'LINEAR', 'RIDGE', 'LASSO', 'TREE', 'RANDOM FOREST',
+                                                  'GRADIENT BOOSTING', 'SVR', 'MLP'])
+    dataplot.compare_ensembled_models(tag='custom weights', y_true=y_test, y_pred=y_custom, weights_ini=weights_opt,
+                                      labels_ini=['KNN', 'LINEAR', 'RIDGE', 'LASSO', 'TREE', 'RANDOM FOREST',
+                                                  'GRADIENT BOOSTING', 'SVR', 'MLP'])
+
+
+def minimize_mae(weights, y, y_pred):
+    """ Calculate the score of a weighted model predictions"""
+    return (np.sum(np.absolute(y - np.dot(y_pred, weights)))) / y.shape[0]
+
+
+def minimize_mse(weights, y, y_pred):
+    """ Calculate the score of a weighted model predictions"""
+    return (np.sum(np.square(y - np.dot(y_pred, weights)))) / y.shape[0]
+
+
+def minimize_r2(weights, y, y_pred):
+    """ Calculate the score of a weighted model predictions"""
+    return -r2_score(y, np.dot(y_pred, weights))
+
+
+def print_results(y_test, y_pred, tag):
+    print('\nSCORES BASED ON ' + tag.upper() + ':')
+    if 'custom' in tag.lower():
+        print('MAE test score: {}'.format(round(mean_absolute_error(y_test, y_pred), 4)))
+        print('R2 test score: {}'.format(round(r2_score(y_test, y_pred), 4)))
+        print('MSE test score: {}\n'.format(round(mean_squared_error(y_test, y_pred), 4)))
+    else:
+        for i in range(len(y_pred)):
+            print('MAE test score: {}'.format(round(mean_absolute_error(y_test, y_pred[i]), 4)))
+            print('R2 test score: {}'.format(round(r2_score(y_test, y_pred[i]), 4)))
+            print('MSE test score: {}\n'.format(round(mean_squared_error(y_test, y_pred[i]), 4)))
+
+
+def calculate_optimal_weights(y, y_pred):
     mae_opt = 100
     mse_opt = 100
     r2_opt = 100
     for i in range(10):
-        weights_ini = np.random.rand(y_pred_test.shape[1])
+        weights_ini = np.random.rand(y_pred.shape[1])
         weights_ini /= np.sum(weights_ini)
         mae = minimize(fun=minimize_mae,
                        x0=weights_ini,
                        method='SLSQP',
-                       args=(y_test, y_pred_test),
-                       bounds=[(0, 1)] * y_pred_test.shape[1],
+                       args=(y, y_pred),
+                       bounds=[(0, 1)] * y_pred.shape[1],
                        options={'disp': True, 'maxiter': 10000, 'eps': 1e-10, 'ftol': 1e-8},
                        constraints={'type': 'eq', 'fun': lambda w: w.sum() - 1})
         mse = minimize(fun=minimize_mse,
                        x0=weights_ini,
                        method='SLSQP',
-                       args=(y_test, y_pred_test),
-                       bounds=[(0, 1)] * y_pred_test.shape[1],
+                       args=(y, y_pred),
+                       bounds=[(0, 1)] * y_pred.shape[1],
                        options={'disp': True, 'maxiter': 10000, 'eps': 1e-10, 'ftol': 1e-8},
                        constraints={'type': 'eq', 'fun': lambda w: w.sum() - 1})
         r2 = minimize(fun=minimize_r2,
                       x0=weights_ini,
                       method='SLSQP',
-                      args=(y_test, y_pred_test),
-                      bounds=[(0, 1)] * y_pred_test.shape[1],
+                      args=(y, y_pred),
+                      bounds=[(0, 1)] * y_pred.shape[1],
                       options={'disp': True, 'maxiter': 10000, 'eps': 1e-10, 'ftol': 1e-8},
                       constraints={'type': 'eq', 'fun': lambda w: w.sum() - 1})
         if mae.fun < mae_opt:
@@ -594,35 +659,4 @@ def optimal_tuning_and_ensemble(dataplot, X_train, X_train2, y_train, X_test, X_
         if r2.fun < r2_opt:
             r2_opt = r2.fun
             r2_weights_opt = r2.x
-    y_mae = np.dot(y_pred_test, mae_weights_opt)
-    print('MAE test score: {}'.format(round(mean_absolute_error(y_test, y_mae), 4)))
-    print('R2 test score: {}'.format(round(r2_score(y_test, y_mae), 4)))
-    print('MSE test score: {}\n'.format(round(mean_squared_error(y_test, y_mae), 4)))
-    y_mse = np.dot(y_pred_test, mse_weights_opt)
-    print('MAE test score: {}'.format(round(mean_absolute_error(y_test, y_mse), 4)))
-    print('R2 test score: {}'.format(round(r2_score(y_test, y_mse), 4)))
-    print('MSE test score: {}\n'.format(round(mean_squared_error(y_test, y_mse), 4)))
-    y_r2 = np.dot(y_pred_test, r2_weights_opt)
-    print('MAE test score: {}'.format(round(mean_absolute_error(y_test, y_r2), 4)))
-    print('R2 test score: {}'.format(round(r2_score(y_test, y_r2), 4)))
-    print('MSE test score: {}\n'.format(round(mean_squared_error(y_test, y_r2), 4)))
-
-    dataplot.compare_ensembled_models(metric=['MAE', 'MSE', 'R2'], y_true=y_test, y_pred=[y_mae, y_mse, y_r2],
-                                      weights_ini=[mae_weights_opt, mse_weights_opt, r2_weights_opt],
-                                      labels_ini=['KNN', 'LINEAR', 'RIDGE', 'LASSO', 'TREE', 'RANDOM FOREST',
-                                                  'GRADIENT BOOSTING', 'SVR', 'MLP'])
-
-
-def minimize_mae(weights, y_test, y_pred_models):
-    """ Calculate the score of a weighted model predictions"""
-    return (np.sum(np.absolute(y_test - np.dot(y_pred_models, weights)))) / y_test.shape[0]
-
-
-def minimize_mse(weights, y_test, y_pred_models):
-    """ Calculate the score of a weighted model predictions"""
-    return (np.sum(np.square(y_test - np.dot(y_pred_models, weights)))) / y_test.shape[0]
-
-
-def minimize_r2(weights, y_test, y_pred_models):
-    """ Calculate the score of a weighted model predictions"""
-    return -r2_score(y_test, np.dot(y_pred_models, weights))
+    return mae_weights_opt, mse_weights_opt, r2_weights_opt

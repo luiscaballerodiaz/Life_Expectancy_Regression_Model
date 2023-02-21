@@ -160,18 +160,26 @@ class DataPlot:
         plt.savefig('Regression max deviation ' + tag + '.png', bbox_inches='tight')
         plt.close()
 
-    def compare_ensembled_models(self, metric, y_true, y_pred, weights_ini, labels_ini):
+    def compare_ensembled_models(self, tag, y_true, y_pred, weights_ini, labels_ini, metric=''):
         """Plot regression model vs real input for different algorithms"""
         # Regression comparison y_test vs y_pred
-        fig, axes = plt.subplots(2, 3, figsize=(self.fig_width, self.fig_height))
+        if metric == '':
+            metric = ['']
+            fig, axes = plt.subplots(1, 2, figsize=(self.fig_width, self.fig_height))
+        else:
+            fig, axes = plt.subplots(2, len(metric), figsize=(self.fig_width, self.fig_height))
         cmap = cm.get_cmap('tab10')
         colors = cmap.colors
         ax = axes.ravel()
         for i in range(len(metric) * 2):
             if i < len(metric):
                 ax[i].scatter(y_true, y_true, s=10, marker='o', c='black', label='Input data')
-                ax[i].scatter(y_true, y_pred[i], color=colors[i % len(colors)], s=10, marker='^', label=metric[i])
-                ax[i].set_title('Ensembled model optimizing ' + metric[i].upper(), fontsize=20, fontweight='bold')
+                if len(metric) == 1:
+                    ax[i].scatter(y_true, y_pred, color=colors[i % len(colors)], s=10, marker='^', label='Prediction')
+                    ax[i].set_title('Ensembled model', fontsize=20, fontweight='bold')
+                else:
+                    ax[i].scatter(y_true, y_pred[i], color=colors[i % len(colors)], s=10, marker='^', label=metric[i])
+                    ax[i].set_title('Ensembled model optimizing ' + metric[i].upper(), fontsize=20, fontweight='bold')
                 ax[i].set_xlabel('Input data', fontsize=14, weight='bold')
                 ax[i].set_ylabel('Model output', fontsize=14, weight='bold')
                 ax[i].legend()
@@ -180,12 +188,18 @@ class DataPlot:
                 # Rearrange data to avoid plot overlapping
                 j = i - len(metric)
                 index_to_remove = []
-                for h in range(len(labels_ini)):
-                    if weights_ini[j][h] < 0.00001:
-                        index_to_remove.append(h)
-                index_to_remove.reverse()
-                weights = weights_ini[j].copy()
                 labels = labels_ini.copy()
+                if len(metric) == 1:
+                    weights = weights_ini.copy()
+                    for h in range(len(labels_ini)):
+                        if weights_ini[h] < 0.00001:
+                            index_to_remove.append(h)
+                else:
+                    weights = weights_ini[j].copy()
+                    for h in range(len(labels_ini)):
+                        if weights_ini[j][h] < 0.00001:
+                            index_to_remove.append(h)
+                index_to_remove.reverse()
                 weights = weights.tolist()
                 for h in range(len(index_to_remove)):
                     weights.pop(index_to_remove[h])
@@ -193,12 +207,15 @@ class DataPlot:
                 explode = [0.1] * len(weights)
                 ax[i].pie(x=weights, explode=explode, labels=labels, autopct='%1.1f%%',
                           shadow=True, textprops={'fontsize': 16})
-                ax[i].set_title('Ensembled model optimizing ' + metric[j].upper(), fontsize=20, fontweight='bold')
+                if len(metric) == 1:
+                    ax[i].set_title('Ensembled model', fontsize=20, fontweight='bold')
+                else:
+                    ax[i].set_title('Ensembled model optimizing ' + metric[j].upper(), fontsize=20, fontweight='bold')
                 ax[i].legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=True, shadow=True, ncol=3)
-        fig.suptitle('Regression comparison ensembled models', fontsize=24, fontweight='bold')
+        fig.suptitle('Regression comparison ensembled models for ' + tag.upper(), fontsize=24, fontweight='bold')
         plt.subplots_adjust(top=0.85)
         fig.tight_layout()
-        plt.savefig('Regression comparison ensembled models.png', bbox_inches='tight')
+        plt.savefig('Regression comparison ensembled models ' + tag + '.png', bbox_inches='tight')
         plt.close()
 
     # @staticmethod
