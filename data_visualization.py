@@ -14,7 +14,6 @@ class DataPlot:
         self.fig_height = 10
         self.bar_width = 0.25
         self.subplot_row = 2
-        self.nfeat = 2
 
     def histogram(self, dataset, plot_name, ncolumns):
         """Plot histogram based on input dataset"""
@@ -278,7 +277,7 @@ class DataPlot:
                     for j in range(len(ytick)):
                         ax[p].text(h + 0.5, j + 0.5, str(round(test_values[j, h, p], 4)),
                                    ha="center", va="center", color="k", fontweight='bold', fontsize=12)
-            fig.suptitle('Test score parameter sweep with ' + algorithm.upper() +
+            fig.suptitle('Mean cross validation test score parameter sweep with ' + algorithm.upper() +
                          '\n' + str(fixed_params), fontsize=24)
             plt.subplots_adjust(top=0.85)
         fig.tight_layout()
